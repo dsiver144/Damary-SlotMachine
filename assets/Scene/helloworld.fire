@@ -607,6 +607,7 @@
       "__uuid__": "40950f6a-2fed-48fa-8892-cc0d37338ce4"
     },
     "delayTime": 0,
+    "stopTime": 0.25,
     "_id": "16lUWsFI9KhpwqHxxEiU14"
   },
   {
@@ -706,6 +707,7 @@
       "__uuid__": "40950f6a-2fed-48fa-8892-cc0d37338ce4"
     },
     "delayTime": 0.3,
+    "stopTime": 0.3,
     "_id": "a5Il+dmrZISo6Mu/Bqk2+Q"
   },
   {
@@ -805,6 +807,7 @@
       "__uuid__": "40950f6a-2fed-48fa-8892-cc0d37338ce4"
     },
     "delayTime": 0.6,
+    "stopTime": 0.6,
     "_id": "1dHUr8evtB947nEO6k92D7"
   },
   {
@@ -904,6 +907,7 @@
       "__uuid__": "40950f6a-2fed-48fa-8892-cc0d37338ce4"
     },
     "delayTime": 0.9,
+    "stopTime": 0.9,
     "_id": "34kRt0mUhDl7nMBN6JpacG"
   },
   {
@@ -1003,6 +1007,7 @@
       "__uuid__": "40950f6a-2fed-48fa-8892-cc0d37338ce4"
     },
     "delayTime": 1.2,
+    "stopTime": 1.2,
     "_id": "96hqaUFJdJJY3SrItkN+WK"
   },
   {

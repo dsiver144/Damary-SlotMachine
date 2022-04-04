@@ -1,6 +1,9 @@
 
 const {ccclass, property} = cc._decorator;
 
+class SymbolNode extends cc.Node {
+    public isStop: boolean = false;
+}
 @ccclass
 export default class Reel extends cc.Component {
 
@@ -26,11 +29,17 @@ export default class Reel extends cc.Component {
 
     private spinSpeed: number = 0;
 
+    private stopDelayDuration: number = 2;
+    private stopDelayCount: number = 0;
+
+    private stopBufferCount: number = 0;
+
     start () {
         // Create symbol and attach it to the reel.
         for (var i = 0; i < this.MAX_ROWS + 1; i++) {
-            const symbol = cc.instantiate(this.symbolPrefab);
+            const symbol = cc.instantiate(this.symbolPrefab) as SymbolNode;
             symbol.x = 0;
+            symbol.isStop = false;
             symbol.y = -symbol.height / 2 - i * symbol.height;
             symbol.parent = this.node;
             this.symbols.push(symbol);
@@ -52,42 +61,49 @@ export default class Reel extends cc.Component {
         if (this.isSpinning) return;
         this.isSpinning = true;
         this.spinSpeed = 0;
+        this.stopDelayCount = this.stopDelayDuration;
     }
     
     private onFinishSpin(spinData) {
         this.isStopping = true;
         this.stopCount = this.MAX_ROWS + 1;
+        this.stopBufferCount = this.delayTime;
     }
 
     protected update(dt: number): void {
-        this.symbols.forEach(symbol => {
+        this.symbols.forEach((symbol: SymbolNode) => {
             // if (this.isStopping && this.stopCount <= 0) return;
             if (!this.isSpinning) return;
             if (this.delayCount < this.delayTime) {
                 this.delayCount += dt;
                 return;
             }
-            if (!symbol['stop']) {
+            if (this.stopDelayCount > 0) {
+                this.stopDelayCount -= dt;
+            }
+            if (this.stopBufferCount > 0) {
+                this.stopBufferCount -= dt;
+            }
+            if (!symbol.isStop) {
                 symbol.y -= this.spinSpeed;
             }
             // Slowly ncrease reel speed 
             this.spinSpeed += 60 * dt;
             if (this.spinSpeed >= this.MAX_SPEED) this.spinSpeed = this.MAX_SPEED;
-            if (!symbol['stop'] && symbol.y <= -this.node.height - symbol.height / 2) {
+            if (!symbol.isStop && symbol.y <= -this.node.height - symbol.height / 2) {
                 // If the symbol pass the below limit then reset it on top on tail node.
                 symbol.y = this.tailSymbol.y + symbol.height;
                 this.tailSymbol = symbol;
-                if (this.isStopping) {
-                    symbol['stop'] = true;
+                if (this.isStopping && this.stopDelayCount <= 0 && this.stopBufferCount <= 0) {
+                    symbol.isStop = true;
                     // When recieve stop signal then move the symbol to its final position
                     // Todo: Update correct sprite base on data got from server.
-                    cc.tween(symbol).to(0.75, {y: this.originalYPosition[this.stopCount - 1]}, {easing: 'backOut'}).delay(0.25).call(() => {
+                    cc.tween(symbol).to(0.5, {y: this.originalYPosition[this.stopCount - 1]}, {easing: 'backOut'}).call(() => {
                         if (this.isStopping) {
                             this.isStopping = false;
                             this.isSpinning = false;
-                            this.stopCount = 4;
                         }
-                        symbol['stop'] = false;
+                        symbol.isStop = false;
                         this.delayCount = 0;
                     }).start();
                     this.stopCount -= 1;

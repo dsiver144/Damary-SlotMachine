@@ -20,7 +20,7 @@ export default class Server {
 
     public requestSpinData(): void {
 
-        const delay = 400; //this._randomRange(100, 1500) + ((Math.random() > 0.8) ? 2000 : 0);
+        const delay = this._randomRange(100, 1500) + ((Math.random() > 0.8) ? 2000 : 0);
         window.setTimeout(() => {
 
             const index = this._randomRange(0, spinDataMocked.length - 1, true);
