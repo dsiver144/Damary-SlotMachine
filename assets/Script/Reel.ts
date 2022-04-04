@@ -14,12 +14,12 @@ export default class Reel extends cc.Component {
 
     public static completedNumber: number = 0;
 
-    readonly MAX_SPEED: number = 25;
+    readonly MAX_SPEED: number = 45;
     readonly MAX_ROWS: number = 3;
 
     readonly SPIN_SPEED_INCREASE_STEP: number = 60;
     // Take x amount of seconds to finish the stop animation.
-    readonly STOP_ANIMATION_DURATION: number = 0.75; 
+    readonly STOP_ANIMATION_DURATION: number = 0.3; 
 
     @property(cc.Prefab)
     symbolPrefab: cc.Prefab = null;
@@ -32,6 +32,9 @@ export default class Reel extends cc.Component {
     private delayToSpinCount: number = 0;
     
     private spinSpeed: number = 0;
+    // Duration for reel to spin up a bit before spin down at the beginning.
+    private backSpinDuration: number = 0.25;
+    private backSpinCount: number = 0;
 
     private symbols: cc.Node[] = [];
     private originalYPosition: number[] = [];
@@ -76,6 +79,7 @@ export default class Reel extends cc.Component {
 
     startSpin() {
         this.spinSpeed = 0;
+        this.backSpinCount = this.backSpinDuration;
         this.delayToSpinCount = this.delayToSpinTime;
         this.delayToStopCount = this.stopDelayDuration;
 
@@ -117,7 +121,10 @@ export default class Reel extends cc.Component {
                 if (!symbol.symbolComp.getBlur()) {
                     symbol.symbolComp.setBlur(true);
                 }
-                symbol.y -= this.spinSpeed;
+                if (this.backSpinCount > 0) {
+                    this.backSpinCount -= dt;
+                }
+                symbol.y -= this.backSpinCount >= 0 ? -this.spinSpeed : this.spinSpeed;
             }
             // Slowly ncrease reel speed 
             this.spinSpeed += this.SPIN_SPEED_INCREASE_STEP * dt;
