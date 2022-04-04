@@ -2,7 +2,7 @@
 const {ccclass, property} = cc._decorator;
 
 class SymbolNode extends cc.Node {
-    public isStop: boolean = false;
+    public stopping: boolean = false;
 }
 @ccclass
 export default class Reel extends cc.Component {
@@ -39,7 +39,7 @@ export default class Reel extends cc.Component {
         for (var i = 0; i < this.MAX_ROWS + 1; i++) {
             const symbol = cc.instantiate(this.symbolPrefab) as SymbolNode;
             symbol.x = 0;
-            symbol.isStop = false;
+            symbol.stopping = false;
             symbol.y = -symbol.height / 2 - i * symbol.height;
             symbol.parent = this.node;
             this.symbols.push(symbol);
@@ -84,18 +84,18 @@ export default class Reel extends cc.Component {
             if (this.stopBufferCount > 0) {
                 this.stopBufferCount -= dt;
             }
-            if (!symbol.isStop) {
+            if (!symbol.stopping) {
                 symbol.y -= this.spinSpeed;
             }
             // Slowly ncrease reel speed 
             this.spinSpeed += 60 * dt;
             if (this.spinSpeed >= this.MAX_SPEED) this.spinSpeed = this.MAX_SPEED;
-            if (!symbol.isStop && symbol.y <= -this.node.height - symbol.height / 2) {
+            if (!symbol.stopping && symbol.y <= -this.node.height - symbol.height / 2) {
                 // If the symbol pass the below limit then reset it on top on tail node.
                 symbol.y = this.tailSymbol.y + symbol.height;
                 this.tailSymbol = symbol;
                 if (this.isStopping && this.stopDelayCount <= 0 && this.stopBufferCount <= 0) {
-                    symbol.isStop = true;
+                    symbol.stopping = true;
                     // When recieve stop signal then move the symbol to its final position
                     // Todo: Update correct sprite base on data got from server.
                     cc.tween(symbol).to(0.5, {y: this.originalYPosition[this.stopCount - 1]}, {easing: 'backOut'}).call(() => {
@@ -103,7 +103,7 @@ export default class Reel extends cc.Component {
                             this.isStopping = false;
                             this.isSpinning = false;
                         }
-                        symbol.isStop = false;
+                        symbol.stopping = false;
                         this.delayCount = 0;
                     }).start();
                     this.stopCount -= 1;
