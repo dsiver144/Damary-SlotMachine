@@ -1,4 +1,5 @@
 import Reel from "./Reel";
+import ReelManager from "./ReelManager";
 import Server from "./Server";
 
 const { ccclass, property } = cc._decorator;
@@ -36,6 +37,7 @@ export default class GameManager extends cc.Component {
     }
 
     onSpinButton() {
+        if (ReelManager.getInstance().isBusy()) return;
         if (!this.spinButton.interactable) return;
         this.spinButton.interactable = false;
         this.server.requestSpinData();

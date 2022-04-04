@@ -100,4 +100,8 @@ export default class ReelManager extends cc.Component {
         this.reels.forEach(reel => reel.stop(spinData));
     }
 
+    isBusy() {
+        return this.isLoadingBundle;
+    }
+
 }
