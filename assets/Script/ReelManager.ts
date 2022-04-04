@@ -61,12 +61,11 @@ export default class ReelManager extends cc.Component {
                 location.reload();
                 return;
             }
-            bundle.loadDir("./", cc.SpriteFrame, (err: Error, assets: cc.SpriteFrame[]) => {
+            bundle.loadDir("/", cc.SpriteFrame, (err: Error, assets: cc.SpriteFrame[]) => {
                 assets.forEach((spriteFrame: cc.SpriteFrame) => {
                     this.symbolSpriteFrameCollection[spriteFrame.name] = spriteFrame;
                 })
                 this.isLoadingBundle = false;
-
                 callback && callback();
             })
         })
@@ -97,6 +96,7 @@ export default class ReelManager extends cc.Component {
     }
 
     onBeginToStop(spinData: string[]) {
+        console.log({spinData});
         this.reels.forEach(reel => reel.stop(spinData));
     }
 

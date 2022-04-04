@@ -14,12 +14,12 @@ export default class Reel extends cc.Component {
 
     public static completedNumber: number = 0;
 
-    readonly MAX_SPEED: number = 45;
+    readonly MAX_SPEED: number = 25;
     readonly MAX_ROWS: number = 3;
 
     readonly SPIN_SPEED_INCREASE_STEP: number = 60;
     // Take x amount of seconds to finish the stop animation.
-    readonly STOP_ANIMATION_DURATION: number = 0.3; 
+    readonly STOP_ANIMATION_DURATION: number = 0.75; 
 
     @property(cc.Prefab)
     symbolPrefab: cc.Prefab = null;
