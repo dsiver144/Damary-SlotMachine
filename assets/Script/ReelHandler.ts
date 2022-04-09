@@ -76,7 +76,7 @@ export default class ReelHandler extends cc.Component {
     }
 
     isFullySpinning() {
-        return this.delayToSpinCount <= 0;
+        return this.isSpinning && this.delayToSpinCount <= 0;
     }
 
     protected update(dt: number): void {
