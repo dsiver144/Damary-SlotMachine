@@ -66,7 +66,7 @@ export default class ReelHandler extends cc.Component {
         this.isSpinning = true;
     }
 
-    stop(finalSymbols: string[]) {
+    stopSpin(finalSymbols: string[]) {
         this.isStopping = true;
 
         this.symbolStopCount = GameConfig.MAX_ROWS_PER_REEL + 1;
