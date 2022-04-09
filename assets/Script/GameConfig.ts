@@ -6,5 +6,5 @@ export const GameConfig = {
     STOP_ANIMATION_DURATION: 0.4,
     SYMBOLS_BUNBLE_NAME: 'symbols',
     AVAILABLE_SYMBOLS: ['1', '2', '3', '4', '5', '6', '7', '8', 'K'],
-    DELAY_TIME: 500 
+    DELAY_TIME: 2000 
 }
