@@ -22,13 +22,13 @@ export default class ReelHandler extends cc.Component {
     // Duration for reel to spin up a bit before spin down at the beginning.
 
     private symbols: cc.Node[] = [];
-    private originalYPosition: number[] = [];
-    private tailSymbol: cc.Node = null;
+    private originalYPositions: number[] = [];
+    private tailSymbolNode: cc.Node = null;
 
     private isSpinning: boolean = false;
     private isStopping: boolean = false;
 
-    private symbolStopCount: number = 0;
+    private remainingStopSymbols: number = 0;
     private stopBufferBetweenReelCount: number = 0;
 
     private finalSymbols: string[] = null;
@@ -45,10 +45,10 @@ export default class ReelHandler extends cc.Component {
             symbol.symbolComp.setRandomSymbol(false);
             this.symbols.push(symbol);
             // Save the original position for stop animation.
-            this.originalYPosition.push(symbol.y);
+            this.originalYPositions.push(symbol.y);
         }
         this.node.height = this.symbols[0].height * GameConfig.MAX_ROWS_PER_REEL;
-        this.tailSymbol = this.symbols[0];
+        this.tailSymbolNode = this.symbols[0];
     }
 
     setReelIndex(index) {
@@ -69,7 +69,7 @@ export default class ReelHandler extends cc.Component {
     stopSpin(finalSymbols: string[]) {
         this.isStopping = true;
 
-        this.symbolStopCount = GameConfig.MAX_ROWS_PER_REEL + 1;
+        this.remainingStopSymbols = GameConfig.MAX_ROWS_PER_REEL + 1;
         this.stopBufferBetweenReelCount = this.delayToSpinTime;
 
         this.finalSymbols = finalSymbols;
@@ -95,25 +95,25 @@ export default class ReelHandler extends cc.Component {
                 symbol.symbolComp.setBlur(true);
                 symbol.y -= this.spinSpeed * dt * GameConfig.TARGET_FPS;
             }
-            // Slowly ncrease reel speed 
+            // Slowly increase reel speed 
             this.spinSpeed += GameConfig.SPIN_SPEED_INCREASE_STEP * dt * GameConfig.TARGET_FPS;
             if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
             if (!symbol.stopping && symbol.y <= -this.node.height - symbol.height / 2) {
                 // If the symbol pass the below limit then reset it on top on tail node & set tail node to this symbol.
-                symbol.y = this.tailSymbol.y + symbol.height;
-                this.tailSymbol = symbol;
+                symbol.y = this.tailSymbolNode.y + symbol.height;
+                this.tailSymbolNode = symbol;
                 // When recieve stop signal then set correct symbol, unblur the symbol and move the symbol to its final position
                 // Wait until the symbol reach the bottom then tween it to correct position after x amount of seconds.
-                if (this.delayToSpinCount <= 0 && this.isStopping && this.stopBufferBetweenReelCount <= 0 && !symbol.stopping) {
+                if (this.delayToSpinCount <= 0 && this.isStopping && this.stopBufferBetweenReelCount <= 0) {
                     symbol.stopping = true;
                     symbol.symbolComp.setBlur(false, false);
                     symbol.symbolComp.setSymbol(this.finalSymbols.pop());
 
-                    let targetYPosition = this.originalYPosition[this.symbolStopCount - 1];
-                    if (this.symbolStopCount === GameConfig.MAX_ROWS_PER_REEL + 1) {
+                    let targetYPosition = this.originalYPositions[this.remainingStopSymbols - 1];
+                    if (this.remainingStopSymbols === GameConfig.MAX_ROWS_PER_REEL + 1) {
                         // If this is the first symbol to reach the bottom when get the stop signal then
                         // tween it on top of the highest symbol of the reel.
-                        targetYPosition = this.originalYPosition[0] + symbol.height;
+                        targetYPosition = this.originalYPositions[0] + symbol.height;
                         symbol.y = targetYPosition + symbol.height;
                     }
                     cc.tween(symbol).to(GameConfig.STOP_ANIMATION_DURATION, { y: targetYPosition }, { easing: 'backOut' })
@@ -125,7 +125,7 @@ export default class ReelHandler extends cc.Component {
                             symbol.stopping = false;
                         }
                         ).start();
-                    this.symbolStopCount -= 1;
+                    this.remainingStopSymbols -= 1;
                 }
             }
         })
