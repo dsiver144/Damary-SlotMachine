@@ -1,15 +1,15 @@
-import { MAX_REEL_SPEED, MAX_ROWS_PER_REEL, SPIN_SPEED_INCREASE_STEP, STOP_ANIMATION_DURATION, TARGET_FPS } from "./GameConfig";
-import Symbol from "./Symbol";
+import { GameConfig } from "./GameConfig";
+import SymbolHandler from "./SymbolHandler";
 
 const { ccclass, property } = cc._decorator;
 
 class SymbolNode extends cc.Node {
     public stopping: boolean = false;
-    public symbolComp: Symbol = null;
+    public symbolComp: SymbolHandler = null;
 }
 
 @ccclass
-export default class Reel extends cc.Component {
+export default class ReelHandler extends cc.Component {
 
     reelIndex: number = 0;
 
@@ -35,11 +35,11 @@ export default class Reel extends cc.Component {
 
     start() {
         // Create symbol and attach it to the reel.
-        for (var i = 0; i < MAX_ROWS_PER_REEL + 1; i++) {
+        for (var i = 0; i < GameConfig.MAX_ROWS_PER_REEL + 1; i++) {
             const symbol = cc.instantiate(this.symbolPrefab) as SymbolNode;
             symbol.x = 0;
             symbol.stopping = false;
-            symbol.symbolComp = symbol.getComponent(Symbol);
+            symbol.symbolComp = symbol.getComponent(SymbolHandler);
             symbol.y = -symbol.height / 2 - i * symbol.height;
             symbol.parent = this.node;
             symbol.symbolComp.setRandomSymbol(false);
@@ -47,7 +47,7 @@ export default class Reel extends cc.Component {
             // Save the original position for stop animation.
             this.originalYPosition.push(symbol.y);
         }
-        this.node.height = this.symbols[0].height * MAX_ROWS_PER_REEL;
+        this.node.height = this.symbols[0].height * GameConfig.MAX_ROWS_PER_REEL;
         this.tailSymbol = this.symbols[0];
     }
 
@@ -55,8 +55,8 @@ export default class Reel extends cc.Component {
         this.reelIndex = index;
     }
 
-    public isBusy() {
-        return this.isSpinning || this.isStopping;
+    isReady() {
+        return !this.isSpinning && !this.isStopping;
     }
 
     startSpin() {
@@ -69,17 +69,21 @@ export default class Reel extends cc.Component {
     stop(finalSymbols: string[]) {
         this.isStopping = true;
 
-        this.symbolStopCount = MAX_ROWS_PER_REEL + 1;
+        this.symbolStopCount = GameConfig.MAX_ROWS_PER_REEL + 1;
         this.stopBufferBetweenReelCount = this.delayToSpinTime;
 
         this.finalSymbols = finalSymbols;
+    }
+
+    isFullySpinning() {
+        return this.delayToSpinCount <= 0;
     }
 
     protected update(dt: number): void {
         if (!this.isSpinning) return;
         this.symbols.forEach((symbol: SymbolNode) => {
             // This is for delaying the start between each reel.
-            if (!this.isStopping && this.delayToSpinCount > 0) {
+            if (this.delayToSpinCount >= 0) {
                 this.delayToSpinCount -= dt;
                 return;
             }
@@ -88,33 +92,31 @@ export default class Reel extends cc.Component {
             }
             if (!symbol.stopping) {
                 // Show blur sprite when spinning.
-                if (!symbol.symbolComp.getBlur()) {
-                    symbol.symbolComp.setBlur(true);
-                }
-                symbol.y -= this.spinSpeed * dt * TARGET_FPS;
+                symbol.symbolComp.setBlur(true);
+                symbol.y -= this.spinSpeed * dt * GameConfig.TARGET_FPS;
             }
             // Slowly ncrease reel speed 
-            this.spinSpeed += SPIN_SPEED_INCREASE_STEP * dt * TARGET_FPS;
-            if (this.spinSpeed >= MAX_REEL_SPEED) this.spinSpeed = MAX_REEL_SPEED;
+            this.spinSpeed += GameConfig.SPIN_SPEED_INCREASE_STEP * dt * GameConfig.TARGET_FPS;
+            if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
             if (!symbol.stopping && symbol.y <= -this.node.height - symbol.height / 2) {
                 // If the symbol pass the below limit then reset it on top on tail node & set tail node to this symbol.
                 symbol.y = this.tailSymbol.y + symbol.height;
                 this.tailSymbol = symbol;
                 // When recieve stop signal then set correct symbol, unblur the symbol and move the symbol to its final position
                 // Wait until the symbol reach the bottom then tween it to correct position after x amount of seconds.
-                if (this.isStopping && this.stopBufferBetweenReelCount <= 0 && !symbol.stopping) {
+                if (this.delayToSpinCount <= 0 && this.isStopping && this.stopBufferBetweenReelCount <= 0 && !symbol.stopping) {
                     symbol.stopping = true;
+                    symbol.symbolComp.setBlur(false, false);
                     symbol.symbolComp.setSymbol(this.finalSymbols.pop());
-                    symbol.symbolComp.setBlur(false);
 
                     let targetYPosition = this.originalYPosition[this.symbolStopCount - 1];
-                    if (this.symbolStopCount === MAX_ROWS_PER_REEL + 1) {
+                    if (this.symbolStopCount === GameConfig.MAX_ROWS_PER_REEL + 1) {
                         // If this is the first symbol to reach the bottom when get the stop signal then
                         // tween it on top of the highest symbol of the reel.
                         targetYPosition = this.originalYPosition[0] + symbol.height;
                         symbol.y = targetYPosition + symbol.height;
                     }
-                    cc.tween(symbol).to(STOP_ANIMATION_DURATION, { y: targetYPosition }, { easing: 'backOut' })
+                    cc.tween(symbol).to(GameConfig.STOP_ANIMATION_DURATION, { y: targetYPosition }, { easing: 'backOut' })
                         .call(() => {
                             if (this.isStopping) {
                                 this.isStopping = false;
