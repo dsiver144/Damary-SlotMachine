@@ -73,7 +73,7 @@ export default class BoardManager extends cc.Component {
         this.state = BoardState.STOP;
     }
 
-    isAllReelSpinning() {
+    isAllReelFullySpinning() {
         return this.reels.every(reel => reel.isFullySpinning());
     }
 
@@ -86,7 +86,7 @@ export default class BoardManager extends cc.Component {
             case BoardState.SPINING:
                 break;
             case BoardState.STOP:
-                if (this.isAllReelSpinning()) {
+                if (this.isAllReelFullySpinning()) {
                     this.reels.forEach(reelHandler => {
                         reelHandler.stopSpin(this.getSymbolsForReel(this.currentSpinData, reelHandler.reelIndex));
                     });
