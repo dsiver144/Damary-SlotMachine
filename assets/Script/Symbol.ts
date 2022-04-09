@@ -1,8 +1,7 @@
-import ReelManager from "./ReelManager";
+import { AVAILABLE_SYMBOLS } from "./GameConfig";
+import SlotMachine from "./SlotMachine";
 
 const {ccclass, property} = cc._decorator;
-
-export const AVAILABLE_SYMBOLS = ['1', '2', '3', '4', '5', '6', '7', '8', 'K'];
 
 @ccclass
 export default class Symbol extends cc.Component {
@@ -26,7 +25,7 @@ export default class Symbol extends cc.Component {
     setSymbol(symbol: string) {
         if (symbol === "Random") return this.setRandomSymbol(false);
 
-        const reelManager = ReelManager.getInstance();
+        const reelManager = SlotMachine.getInstance();
         this.normalSpriteFrame = reelManager.getSymbolSprite(`symbol_${symbol}`);
         this.blurSpriteFrame = reelManager.getSymbolSprite(`symbol_${symbol}_blur`);
     }
