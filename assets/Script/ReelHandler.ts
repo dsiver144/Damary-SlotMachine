@@ -121,6 +121,7 @@ export default class ReelHandler extends cc.Component {
                 this.reservedSymbols.forEach((symbol: SymbolHandler, index: number) => {
                     symbol.setSymbol(displaySymbols[index]);
                 });
+                // Keep spinning until the delay time is over.
                 this.currentReelState = ReelState.SPINNING;
                 setTimeout(() => {
                     this.currentReelState = ReelState.STOP_SPIN;
