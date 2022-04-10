@@ -10,11 +10,11 @@ export class ResourceManager {
        
     public static loadSymbolAssetBundle() {
         return new Promise<void>((resolve, reject) => {
-            cc.assetManager.loadBundle(GameConfig.SYMBOLS_BUNBLE_NAME, (err: Error, bundle: cc.AssetManager.Bundle) => {
+            cc.assetManager.loadBundle(GameConfig.SYMBOLS_BUNDLE_NAME, (err: Error, bundle: cc.AssetManager.Bundle) => {
                 if (err) {
                     alert("Error while loading symbol bundle, please retry later.");
                     location.reload();
-                    return;
+                    reject();
                 }
                 bundle.loadDir("/", cc.SpriteFrame, (err: Error, assets: cc.SpriteFrame[]) => {
                     assets.forEach((spriteFrame: cc.SpriteFrame) => {

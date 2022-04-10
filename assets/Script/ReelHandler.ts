@@ -1,134 +1,172 @@
+import BoardManager from "./BoardManager";
 import { GameConfig } from "./GameConfig";
+import SlotMachine from "./SlotMachine";
 import SymbolHandler from "./SymbolHandler";
 
 const { ccclass, property } = cc._decorator;
 
-class SymbolNode extends cc.Node {
-    public stopping: boolean = false;
-    public symbolComp: SymbolHandler = null;
+enum ReelState {
+    IDLE,
+    START_SPIN,
+    SPINNING,
+    MAP_SYMBOL,
+    STOP_SPIN,
+    STOPPING,
 }
 
 @ccclass
 export default class ReelHandler extends cc.Component {
 
-    reelIndex: number = 0;
-
     @property(cc.Prefab)
     symbolPrefab: cc.Prefab = null;
+    
+    public reelIndex: number = 0;
 
-    delayToSpinTime: number = 0;
-    private delayToSpinCount: number = 0;
     private spinSpeed: number = 0;
-    // Duration for reel to spin up a bit before spin down at the beginning.
 
-    private symbols: cc.Node[] = [];
-    private originalYPositions: number[] = [];
-    private tailSymbolNode: cc.Node = null;
+    private symbols: SymbolHandler[] = [];
+    private reservedSymbols: SymbolHandler[] = [];
 
-    private isSpinning: boolean = false;
-    private isStopping: boolean = false;
+    private currentReelState: ReelState = ReelState.IDLE;
 
-    private remainingStopSymbols: number = 0;
-    private stopBufferBetweenReelCount: number = 0;
-
-    private finalSymbols: string[] = null;
-
-    start() {
-        // Create symbol and attach it to the reel.
-        for (var i = 0; i < GameConfig.MAX_ROWS_PER_REEL + 1; i++) {
-            const symbol = cc.instantiate(this.symbolPrefab) as SymbolNode;
-            symbol.x = 0;
-            symbol.stopping = false;
-            symbol.symbolComp = symbol.getComponent(SymbolHandler);
-            symbol.y = -symbol.height / 2 - i * symbol.height;
-            symbol.parent = this.node;
-            symbol.symbolComp.setRandomSymbol(false);
+    init(reelIndex: number) {
+        this.reelIndex = reelIndex;
+        // Create symbols and attach them to the reel.
+        for (var i = 0; i < GameConfig.NUM_SYMBOLS_PER_REEL + 1; i++) {
+            const symbol = this.createSymbol(i);
             this.symbols.push(symbol);
-            // Save the original position for stop animation.
-            this.originalYPositions.push(symbol.y);
         }
-        this.node.height = this.symbols[0].height * GameConfig.MAX_ROWS_PER_REEL;
-        this.tailSymbolNode = this.symbols[0];
+        for (var i = 0; i < GameConfig.NUM_SYMBOLS_PER_REEL; i++) {
+            const symbol = this.createSymbol(i);
+            symbol.node.opacity = 0;
+            this.reservedSymbols.push(symbol);
+        }
+        this.node.height = this.symbols[0].node.height * GameConfig.NUM_SYMBOLS_PER_REEL;
+    }
+
+    createSymbol(symbolIndex: number) {
+        const symbolNode = cc.instantiate(this.symbolPrefab);
+        const symbolHanlder = symbolNode.getComponent(SymbolHandler);
+        symbolHanlder.init(symbolIndex);
+        symbolNode.parent = this.node;
+        return symbolHanlder;
+    }
+
+    setSymbolYByIndex(symbol: cc.Node, symbolIndex: number) {
+        symbol.y = -symbol.height / 2 - symbolIndex * symbol.height;
     }
 
     setReelIndex(index) {
         this.reelIndex = index;
     }
 
-    isReady() {
-        return !this.isSpinning && !this.isStopping;
+    isIdle() {
+        return this.currentReelState === ReelState.IDLE;
+    }
+
+    isFullySpinning() {
+        return this.currentReelState === ReelState.SPINNING;
     }
 
     startSpin() {
         this.spinSpeed = 0;
-        this.delayToSpinCount = this.delayToSpinTime;
-
-        this.isSpinning = true;
+        this.currentReelState = ReelState.START_SPIN;
     }
 
-    stopSpin(finalSymbols: string[]) {
-        this.isStopping = true;
-
-        this.remainingStopSymbols = GameConfig.MAX_ROWS_PER_REEL + 1;
-        this.stopBufferBetweenReelCount = this.delayToSpinTime;
-
-        this.finalSymbols = finalSymbols;
+    stopSpin() {
+        this.currentReelState = ReelState.MAP_SYMBOL;
     }
 
-    isFullySpinning() {
-        return this.isSpinning && this.delayToSpinCount <= 0;
+    getResultSymbols() {
+        const maxReels = BoardManager.getInstance().maxReels();
+        const spinData = SlotMachine.getInstance().currentSpinInfo;
+        const symbols = [];
+        for (var i = 0; i < 3; i++) {
+            symbols.push(spinData[this.reelIndex + i * maxReels]);
+        }
+        return symbols;
     }
 
     protected update(dt: number): void {
-        if (!this.isSpinning) return;
-        this.symbols.forEach((symbol: SymbolNode) => {
-            // This is for delaying the start between each reel.
-            if (this.delayToSpinCount >= 0) {
-                this.delayToSpinCount -= dt;
-                return;
-            }
-            if (this.stopBufferBetweenReelCount > 0) {
-                this.stopBufferBetweenReelCount -= dt;
-            }
-            if (!symbol.stopping) {
-                // Show blur sprite when spinning.
-                symbol.symbolComp.setBlur(true);
-                symbol.y -= this.spinSpeed * dt * GameConfig.TARGET_FPS;
-            }
-            // Slowly increase reel speed 
-            this.spinSpeed += GameConfig.SPIN_SPEED_INCREASE_STEP * dt * GameConfig.TARGET_FPS;
-            if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
-            if (!symbol.stopping && symbol.y <= -this.node.height - symbol.height / 2) {
-                // If the symbol pass the below limit then reset it on top on tail node & set tail node to this symbol.
-                symbol.y = this.tailSymbolNode.y + symbol.height;
-                this.tailSymbolNode = symbol;
-                // When recieve stop signal then set correct symbol, unblur the symbol and move the symbol to its final position
-                // Wait until the symbol reach the bottom then tween it to correct position after x amount of seconds.
-                if (this.delayToSpinCount <= 0 && this.isStopping && this.stopBufferBetweenReelCount <= 0) {
-                    symbol.stopping = true;
-                    symbol.symbolComp.setBlur(false, false);
-                    symbol.symbolComp.setSymbol(this.finalSymbols.pop());
+        this.updateSpin(dt);
+    }
 
-                    let targetYPosition = this.originalYPositions[this.remainingStopSymbols - 1];
-                    if (this.remainingStopSymbols === GameConfig.MAX_ROWS_PER_REEL + 1) {
-                        // If this is the first symbol to reach the bottom when get the stop signal then
-                        // tween it on top of the highest symbol of the reel.
-                        targetYPosition = this.originalYPositions[0] + symbol.height;
-                        symbol.y = targetYPosition + symbol.height;
+    updateSpin(dt: number) {
+        switch(this.currentReelState) {
+            case ReelState.START_SPIN:
+                setTimeout(() => {
+                    this.currentReelState = ReelState.SPINNING;
+                }, GameConfig.DELAY_TIME_ON_START[this.reelIndex] * 1000);
+                break;
+            case ReelState.SPINNING:
+                const newSymbols = [...this.symbols];
+                this.symbols.forEach((symbol: SymbolHandler) => {
+                    if (this.spinSpeed === GameConfig.MAX_REEL_SPEED) {
+                        symbol.getComponent(SymbolHandler).setBlur(true);
                     }
-                    cc.tween(symbol).to(GameConfig.STOP_ANIMATION_DURATION, { y: targetYPosition }, { easing: 'backOut' })
-                        .call(() => {
-                            if (this.isStopping) {
-                                this.isStopping = false;
-                                this.isSpinning = false;
-                            }
-                            symbol.stopping = false;
-                        }
-                        ).start();
-                    this.remainingStopSymbols -= 1;
-                }
-            }
-        })
+                    symbol.node.y -= this.spinSpeed * dt * GameConfig.TARGET_FPS;
+                    if (symbol.node.y <= -this.node.height - symbol.node.height / 2) {
+                        symbol.node.y = this.symbols[0].node.y + symbol.node.height;
+                        newSymbols.unshift(newSymbols.pop());
+                    }
+                });
+                this.symbols = newSymbols;
+                
+                this.spinSpeed += GameConfig.SPIN_SPEED_INCREASE_STEP * dt * GameConfig.TARGET_FPS;
+                if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
+                break;
+            case ReelState.MAP_SYMBOL:
+                console.log("Map Symbols");
+                const displaySymbols = this.getResultSymbols();
+                this.reservedSymbols.forEach((symbol: SymbolHandler, index: number) => {
+                    symbol.setSymbol(displaySymbols[index]);
+                });
+                this.currentReelState = ReelState.SPINNING;
+                setTimeout(() => {
+                    this.currentReelState = ReelState.STOP_SPIN;
+                }, GameConfig.DELAY_TIME_ON_STOP[this.reelIndex] * 1000);
+                break;
+            case ReelState.STOP_SPIN:
+                // Tween the symbols to correct positions on the reel.
+                this.symbols.forEach((symbol: SymbolHandler, index: number) => {
+                    symbol.setBlur(false);
+                    var targetY = symbol.getSymbolYByIndex(index + GameConfig.NUM_SYMBOLS_PER_REEL);
+                    cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, {y: targetY}, {easing: 'backOut'}).start();
+                });
+                this.reservedSymbols.forEach((symbol: SymbolHandler, index: number) => {
+                    symbol.setBlur(false);
+                    var targetY = symbol.getSymbolYByIndex(index);
+                    symbol.node.y = targetY + GameConfig.NUM_SYMBOLS_PER_REEL * symbol.node.height;
+                    symbol.node.opacity = 255;
+                    cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, {y: targetY}, {easing: 'backOut'}).start();
+                });
+                // Wait for animation to finish.
+                this.currentReelState = ReelState.STOPPING;
+                setTimeout(() => {
+                    // Swap active symbols & reserved symbols array for next spin.
+                    const lastSymbolOnReel = this.symbols.pop();
+                    const currentSymbols = [...this.symbols];
+
+                    this.symbols = this.reservedSymbols;
+                    this.symbols.push(lastSymbolOnReel);
+
+                    this.reservedSymbols = currentSymbols;
+                    this.reservedSymbols.forEach((symbol, index) => {
+                        symbol.symbolIndex = index;
+                        symbol.node.opacity = 0;
+                    });
+
+                    this.currentReelState = ReelState.IDLE;
+
+                }, GameConfig.STOP_ANIMATION_DURATION * 1000);
+                break;
+            case ReelState.STOPPING:
+                // Do stuff when stopping
+                break;
+            case ReelState.IDLE:
+                // Do stuff when idling
+                break;
+        }
     }
 
 }

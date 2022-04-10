@@ -9,22 +9,24 @@ export default class SymbolHandler extends cc.Component {
     @property(cc.Sprite)
     sprite: cc.Sprite = null;
 
+    symbolIndex: number = -1;
+
     private isBlur: boolean = false;
     private normalSpriteFrame: cc.SpriteFrame = null;
     private blurSpriteFrame: cc.SpriteFrame = null;
 
-    setBlur(status: boolean, refreshSprite: boolean = true) {
-        if (this.isBlur === status) return;
-        this.isBlur = status;
-        refreshSprite && this.updateSpriteFrame();
+    init(symbolIndex: number) {
+        this.symbolIndex = symbolIndex;
+        this.setRandomSymbol(false);
+        this.node.x = 0;
+        this.node.y = this.getSymbolYByIndex(this.symbolIndex);
     }
 
-    updateSpriteFrame() {
-        this.sprite.spriteFrame = this.isBlur ? this.blurSpriteFrame : this.normalSpriteFrame;
+    getSymbolYByIndex(symbolIndexInReel: number) {
+        return -this.node.height / 2 - symbolIndexInReel * this.node.height;
     }
 
     setSymbol(symbol: string) {
-        if (symbol === "Random") return this.setRandomSymbol(false);
         this.normalSpriteFrame = ResourceManager.getSymbolSprite(`symbol_${symbol}`);
         this.blurSpriteFrame = ResourceManager.getSymbolSprite(`symbol_${symbol}_blur`);
         this.updateSpriteFrame();
@@ -35,4 +37,17 @@ export default class SymbolHandler extends cc.Component {
         this.setSymbol(BoardManager.getInstance().randomSymbol());
     }
 
+    setBlur(status: boolean, refreshSprite: boolean = true) {
+        if (this.isBlur === status) {
+            return;
+        }
+        this.isBlur = status;
+        refreshSprite && this.updateSpriteFrame();
+    }
+
+    updateSpriteFrame() {
+        this.sprite.spriteFrame = this.isBlur ? this.blurSpriteFrame : this.normalSpriteFrame;
+    }
+
 }
+

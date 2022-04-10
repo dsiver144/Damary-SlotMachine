@@ -21,10 +21,12 @@ export default class SlotMachine extends cc.Component {
 
     private startTime: number = 0;
     private server: Server = new Server();
+
+    public currentSpinInfo: string[] = [];
     
     protected onLoad(): void {
         SlotMachine.inst = this;
-        this.server.registerDataRespondEvent(this.onSpinFinishResponse.bind(this));
+        this.server.registerDataRespondEvent(this.onReceivedResponse.bind(this));
         // Wait for asset bundle to load before showing the reels.
         ResourceManager.loadSymbolAssetBundle().then(() => {
             BoardManager.getInstance().initReels();
@@ -41,19 +43,20 @@ export default class SlotMachine extends cc.Component {
         this.spinButton.interactable = false;
     }
 
-    onSpinFinishResponse(spinData: string[]) {
+    onReceivedResponse(spinInfo: string[]) {
+        this.currentSpinInfo = spinInfo;
+
         const delay = Date.now() - this.startTime;
         const onStopReels = () => {
-            BoardManager.getInstance().stopReels(spinData);
+            BoardManager.getInstance().stopReels();
         }
-        if (delay >= GameConfig.DELAY_TIME) {
+        if (delay >= GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE) {
             onStopReels();
         } else {
             setTimeout(() => {
                 onStopReels();
-            }, GameConfig.DELAY_TIME - delay);
+            }, GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE - delay);
         }
     }
-
 
 }

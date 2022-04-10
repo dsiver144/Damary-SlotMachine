@@ -11,10 +11,11 @@ class ReelConfig {
 }
 
 enum BoardState {
-    SPIN,
-    SPINING,
-    STOP,
+    START_SPIN,
+    SPINNING,
+    STOP_SPIN,
     STOPPING,
+    STOPPED,
     IDLE,
 }
 
@@ -32,25 +33,19 @@ export default class BoardManager extends cc.Component {
     @property(cc.Prefab)
     reelPrefab: cc.Prefab = null;
 
-    @property([ReelConfig])
-    reelConfig: ReelConfig[] = [];
-
     private reels: ReelHandler[] = [];
-    private state: BoardState = BoardState.IDLE;
+    private currentBoardState: BoardState = BoardState.IDLE;
     
-    private currentSpinData: string[] = [];
-
     protected onLoad(): void {
         BoardManager.inst = this;
     }
 
     initReels() {
-        for (let i = 0; i < this.maxReels(); i++) {
+        for (let reelIndex = 0; reelIndex < this.maxReels(); reelIndex++) {
             const reelNode = cc.instantiate(this.reelPrefab);
             reelNode.parent = this.reelLayout.node;
             const reelComp = reelNode.getComponent(ReelHandler);
-            reelComp.delayToSpinTime = this.reelConfig[i].delayTimeToSpin;
-            reelComp.setReelIndex(i);
+            reelComp.init(reelIndex);
             this.reels.push(reelComp);
         }
         this.reelLayout.updateLayout();
@@ -59,59 +54,63 @@ export default class BoardManager extends cc.Component {
     }
 
     maxReels() {
-        return this.reelConfig.length;
+        return GameConfig.NUM_VISIBLE_REELS;
     }
 
     spinReels() {
         console.log("Spin Reels");
-        this.state = BoardState.SPIN;
+        this.currentBoardState = BoardState.START_SPIN;
     }
 
-    stopReels(slotData: string[]) {
+    stopReels() {
         console.log("Stop Reels");
-        this.currentSpinData = slotData;
-        this.state = BoardState.STOP;
+        this.currentBoardState = BoardState.STOP_SPIN;
     }
 
-    isAllReelFullySpinning() {
+    areAllReelsFullySpinning() {
         return this.reels.every(reel => reel.isFullySpinning());
     }
 
-    update(dt: number): void {
-        switch(this.state) {
-            case BoardState.SPIN:
-                this.reels.forEach(reelHandler => reelHandler.startSpin());
-                this.state = BoardState.SPINING;
+    areAllReelsIdling() {
+        return this.reels.every(reel => reel.isIdle());
+    }
+
+    updateBoardState() {
+        switch(this.currentBoardState) {
+            case BoardState.START_SPIN:
+                this.reels.forEach(reelHandler => {
+                    reelHandler.startSpin();
+                });
+                this.currentBoardState = BoardState.SPINNING;
                 break;
-            case BoardState.SPINING:
+            case BoardState.SPINNING:
+                // Do stuff when spinning
                 break;
-            case BoardState.STOP:
-                if (this.isAllReelFullySpinning()) {
+            case BoardState.STOP_SPIN:
+                if (this.areAllReelsFullySpinning()) {
                     this.reels.forEach(reelHandler => {
-                        reelHandler.stopSpin(this.getSymbolsForReel(this.currentSpinData, reelHandler.reelIndex));
+                        reelHandler.stopSpin();
                     });
-                    this.state = BoardState.STOPPING;
+                    this.currentBoardState = BoardState.STOPPING;
                 }
                 break;
             case BoardState.STOPPING:
-                if (this.reels.every(reel => reel.isReady())) {
-                    this.state = BoardState.IDLE;
-                    SlotMachine.getInstance().spinButton.interactable = true;
+                if (this.areAllReelsIdling()) {
+                    this.currentBoardState = BoardState.STOPPED;
                 }
                 break;
+            case BoardState.STOPPED:
+                SlotMachine.getInstance().spinButton.interactable = true;
+                this.currentBoardState = BoardState.IDLE;
+                break;
             case BoardState.IDLE:
+                // Do stuff when idling
                 break;
         }
     }
 
-    getSymbolsForReel(spinData: string[], reelIndex: number) {
-        const maxReels = this.maxReels();
-        const symbols = [];
-        for (var i = 0; i < 3; i++) {
-            symbols.push(spinData[reelIndex + i * maxReels]);
-        }
-        symbols.push("Random");
-        return symbols;
+    update(dt: number): void {
+        this.updateBoardState();
     }
 
     randomSymbol() {
