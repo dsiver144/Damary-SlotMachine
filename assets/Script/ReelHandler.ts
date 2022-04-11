@@ -106,10 +106,10 @@ export default class ReelHandler extends cc.Component {
     updateReelState(dt: number) {
         switch(this.currentReelState) {
             case ReelState.SPINNING:
-                this.updateSpin(dt);
+                this.onUpdateSpin(dt);
                 break;
             case ReelState.STOP_SPIN:
-                this.updateStop();
+                this.onUpdateStop();
                 break;
             case ReelState.STOPPING:
                 // Do stuff when stopping
@@ -120,7 +120,7 @@ export default class ReelHandler extends cc.Component {
         }
     }
 
-    updateSpin(dt) {
+    onUpdateSpin(dt) {
         const newSymbols = [...this.symbols];
         this.symbols.forEach((symbol: SymbolHandler) => {
             if (this.spinSpeed === GameConfig.MAX_REEL_SPEED) {
@@ -139,7 +139,7 @@ export default class ReelHandler extends cc.Component {
         if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
     }
 
-    updateStop() {
+    onUpdateStop() {
         // Tween the symbols to correct positions on the reel.
         this.symbols.forEach((symbol: SymbolHandler, index: number) => {
             symbol.setBlur(false);
