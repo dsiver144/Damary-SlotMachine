@@ -93,7 +93,7 @@ export default class ReelHandler extends cc.Component {
         const spinData = SlotMachine.getInstance().currentSpinInfo;
         const maxReels = GameConfig.NUM_VISIBLE_REELS;
         const symbols = [];
-        for (var i = 0; i < 3; i++) {
+        for (var i = 0; i < GameConfig.NUM_SYMBOLS_PER_REEL; i++) {
             symbols.push(spinData[this.reelIndex + i * maxReels]);
         }
         return symbols;
