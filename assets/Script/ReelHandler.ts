@@ -109,7 +109,13 @@ export default class ReelHandler extends cc.Component {
                 this.onUpdateSpin(dt);
                 break;
             case ReelState.STOP_SPIN:
-                this.onUpdateStop();
+                this.onStopSpin();
+                this.currentReelState = ReelState.STOPPING;
+                setTimeout(() => {
+                    // Wait for animation to finish then change to Idle state.
+                    this.swapActiveAndReservedSymbols();
+                    this.currentReelState = ReelState.IDLE;
+                }, GameConfig.STOP_ANIMATION_DURATION);
                 break;
             case ReelState.STOPPING:
                 // Do stuff when stopping
@@ -139,7 +145,7 @@ export default class ReelHandler extends cc.Component {
         if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
     }
 
-    onUpdateStop() {
+    onStopSpin() {
         // Tween the symbols to correct positions on the reel.
         this.symbols.forEach((symbol: SymbolHandler, index: number) => {
             symbol.setBlur(false);
@@ -153,23 +159,21 @@ export default class ReelHandler extends cc.Component {
             symbol.node.opacity = 255;
             cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, {y: targetY}, {easing: 'backOut'}).start();
         });
-        // Wait for animation to finish.
-        this.currentReelState = ReelState.STOPPING;
-        setTimeout(() => {
-            // Swap active symbols & reserved symbols array for next spin.
-            const lastSymbolOnReel = this.symbols.pop();
-            const currentSymbols = [...this.symbols];
+    }
 
-            this.symbols = this.reservedSymbols;
-            this.symbols.push(lastSymbolOnReel);
+    swapActiveAndReservedSymbols() {
+        // Swap active symbols & reserved symbols array for next spin.
+        const lastSymbolOnReel = this.symbols.pop();
+        const activeSymbols = [...this.symbols];
 
-            this.reservedSymbols = currentSymbols;
-            this.reservedSymbols.forEach((symbol, index) => {
-                symbol.symbolIndex = index;
-                symbol.node.opacity = 0;
-            });
-            this.currentReelState = ReelState.IDLE;
-        }, GameConfig.STOP_ANIMATION_DURATION * 1000);
+        this.symbols = this.reservedSymbols;
+        this.symbols.push(lastSymbolOnReel);
+
+        this.reservedSymbols = activeSymbols;
+        this.reservedSymbols.forEach((symbol, index) => {
+            symbol.symbolIndex = index;
+            symbol.node.opacity = 0;
+        });
     }
 
 }
