@@ -1,5 +1,4 @@
 import BoardManager from "./BoardManager";
-import { GameConfig } from "./GameConfig";
 import { ResourceManager } from "./ResourceManager";
 import Server from "./Server";
 
@@ -19,7 +18,6 @@ export default class SlotMachine extends cc.Component {
     @property(cc.Button)
     spinButton: cc.Button = null;
 
-    private startTime: number = 0;
     private server: Server = new Server();
 
     public currentSpinInfo: string[] = [];
@@ -37,7 +35,6 @@ export default class SlotMachine extends cc.Component {
     }
 
     onSpin() {
-        this.startTime = Date.now();
         this.server.requestSpinData();
         BoardManager.getInstance().spinReels();
         this.spinButton.interactable = false;
@@ -45,18 +42,7 @@ export default class SlotMachine extends cc.Component {
 
     onReceivedResponse(spinInfo: string[]) {
         this.currentSpinInfo = spinInfo;
-
-        const delay = Date.now() - this.startTime;
-        const onStopReels = () => {
-            BoardManager.getInstance().stopReels();
-        }
-        if (delay >= GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE) {
-            onStopReels();
-        } else {
-            setTimeout(() => {
-                onStopReels();
-            }, GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE - delay);
-        }
+        BoardManager.getInstance().onReceivedResponse();
     }
 
 }

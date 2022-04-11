@@ -35,13 +35,15 @@ export default class BoardManager extends cc.Component {
 
     private reels: ReelHandler[] = [];
     private currentBoardState: BoardState = BoardState.IDLE;
+
+    private spinStartTime: number = 0;
     
     protected onLoad(): void {
         BoardManager.inst = this;
     }
 
     initReels() {
-        for (let reelIndex = 0; reelIndex < this.maxReels(); reelIndex++) {
+        for (let reelIndex = 0; reelIndex < GameConfig.NUM_VISIBLE_REELS; reelIndex++) {
             const reelNode = cc.instantiate(this.reelPrefab);
             reelNode.parent = this.reelLayout.node;
             const reelComp = reelNode.getComponent(ReelHandler);
@@ -53,22 +55,27 @@ export default class BoardManager extends cc.Component {
         cc.tween(this.reelLayout.node).to(0.25, {opacity: 255}).start();
     }
 
-    maxReels() {
-        return GameConfig.NUM_VISIBLE_REELS;
+    onReceivedResponse() {
+        const elapsedTime = Date.now() - this.spinStartTime;
+        const onStopSpin = () => {
+            this.currentBoardState = BoardState.STOP_SPIN;
+        }
+        if (elapsedTime >= GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE) {
+            onStopSpin();
+        } else {
+            setTimeout(() => {
+                onStopSpin();
+            }, GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE - elapsedTime);
+        }
     }
 
     spinReels() {
-        console.log("Spin Reels");
+        this.spinStartTime = Date.now();
         this.currentBoardState = BoardState.START_SPIN;
     }
 
-    stopReels() {
-        console.log("Stop Reels");
-        this.currentBoardState = BoardState.STOP_SPIN;
-    }
-
-    areAllReelsFullySpinning() {
-        return this.reels.every(reel => reel.isFullySpinning());
+    areAllReelsSpinning() {
+        return this.reels.every(reel => reel.isSpinning());
     }
 
     areAllReelsIdling() {
@@ -79,7 +86,9 @@ export default class BoardManager extends cc.Component {
         switch(this.currentBoardState) {
             case BoardState.START_SPIN:
                 this.reels.forEach(reelHandler => {
-                    reelHandler.startSpin();
+                    setTimeout(() => {
+                        reelHandler.startSpin();
+                    }, GameConfig.DELAY_TIME_ON_START[reelHandler.reelIndex] * 1000);
                 });
                 this.currentBoardState = BoardState.SPINNING;
                 break;
@@ -87,9 +96,11 @@ export default class BoardManager extends cc.Component {
                 // Do stuff when spinning
                 break;
             case BoardState.STOP_SPIN:
-                if (this.areAllReelsFullySpinning()) {
+                if (this.areAllReelsSpinning()) {
                     this.reels.forEach(reelHandler => {
-                        reelHandler.stopSpin();
+                        setTimeout(() => {
+                            reelHandler.stopSpin();
+                        }, GameConfig.DELAY_TIME_ON_STOP[reelHandler.reelIndex] * 1000);
                     });
                     this.currentBoardState = BoardState.STOPPING;
                 }
@@ -111,10 +122,6 @@ export default class BoardManager extends cc.Component {
 
     update(dt: number): void {
         this.updateBoardState();
-    }
-
-    randomSymbol() {
-        return GameConfig.AVAILABLE_SYMBOLS[Math.floor(Math.random() * GameConfig.AVAILABLE_SYMBOLS.length)];
     }
 
 }

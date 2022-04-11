@@ -1,4 +1,3 @@
-import BoardManager from "./BoardManager";
 import { ResourceManager } from "./ResourceManager";
 
 const {ccclass, property} = cc._decorator;
@@ -17,24 +16,12 @@ export default class SymbolHandler extends cc.Component {
 
     init(symbolIndex: number) {
         this.symbolIndex = symbolIndex;
-        this.setRandomSymbol(false);
-        this.node.x = 0;
-        this.node.y = this.getSymbolYByIndex(this.symbolIndex);
-    }
-
-    getSymbolYByIndex(symbolIndexInReel: number) {
-        return -this.node.height / 2 - symbolIndexInReel * this.node.height;
     }
 
     setSymbol(symbol: string) {
         this.normalSpriteFrame = ResourceManager.getSymbolSprite(`symbol_${symbol}`);
         this.blurSpriteFrame = ResourceManager.getSymbolSprite(`symbol_${symbol}_blur`);
         this.updateSpriteFrame();
-    }
-
-    setRandomSymbol(blur: boolean) {
-        this.setBlur(blur, false);
-        this.setSymbol(BoardManager.getInstance().randomSymbol());
     }
 
     setBlur(status: boolean, refreshSprite: boolean = true) {
