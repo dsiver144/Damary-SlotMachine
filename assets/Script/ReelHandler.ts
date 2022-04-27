@@ -1,30 +1,25 @@
 import { GameConfig } from "./GameConfig";
 import SlotMachine from "./SlotMachine";
+import { FSM } from "./States/FSM";
+import { ReelIdleState } from "./States/ReelStates/ReelIdleState";
+import { ReelSpinningState } from "./States/ReelStates/ReelSpinningState";
+import { ReelStartStopState } from "./States/ReelStates/ReelStartStopState";
 import SymbolHandler from "./SymbolHandler";
 
 const { ccclass, property } = cc._decorator;
 
-enum ReelState {
-    IDLE,
-    SPINNING,
-    STOP_SPIN,
-    STOPPING,
-}
-
 @ccclass
-export default class ReelHandler extends cc.Component {
+export default class ReelHandler extends FSM {
 
     @property(cc.Prefab)
     symbolPrefab: cc.Prefab = null;
-    
+
     public reelIndex: number = 0;
 
     private spinSpeed: number = 0;
 
     private symbols: SymbolHandler[] = [];
     private reservedSymbols: SymbolHandler[] = [];
-
-    private currentReelState: ReelState = ReelState.IDLE;
 
     init(reelIndex: number) {
         this.reelIndex = reelIndex;
@@ -65,21 +60,20 @@ export default class ReelHandler extends cc.Component {
     }
 
     isIdle() {
-        return this.currentReelState === ReelState.IDLE;
+        return this.currentState instanceof ReelIdleState;
     }
 
     isSpinning() {
-        return this.currentReelState === ReelState.SPINNING;
+        return this.currentState instanceof ReelSpinningState;
     }
 
     startSpin() {
         this.spinSpeed = 0;
-        this.currentReelState = ReelState.SPINNING;
+        this.setState(new ReelSpinningState(this));
     }
 
     stopSpin() {
-        this.mapSymbols();
-        this.currentReelState = ReelState.STOP_SPIN;
+        this.setState(new ReelStartStopState(this));
     }
 
     mapSymbols() {
@@ -99,33 +93,6 @@ export default class ReelHandler extends cc.Component {
         return symbols;
     }
 
-    protected update(dt: number): void {
-        this.updateReelState(dt);
-    }
-
-    updateReelState(dt: number) {
-        switch(this.currentReelState) {
-            case ReelState.SPINNING:
-                this.onUpdateSpin(dt);
-                break;
-            case ReelState.STOP_SPIN:
-                this.onStopSpin();
-                this.currentReelState = ReelState.STOPPING;
-                setTimeout(() => {
-                    // Wait for animation to finish then change to Idle state.
-                    this.swapActiveAndReservedSymbols();
-                    this.currentReelState = ReelState.IDLE;
-                }, GameConfig.STOP_ANIMATION_DURATION);
-                break;
-            case ReelState.STOPPING:
-                // Do stuff when stopping
-                break;
-            case ReelState.IDLE:
-                // Do stuff when idling
-                break;
-        }
-    }
-
     onUpdateSpin(dt) {
         const newSymbols = [...this.symbols];
         this.symbols.forEach((symbol: SymbolHandler) => {
@@ -140,24 +107,25 @@ export default class ReelHandler extends cc.Component {
             }
         });
         this.symbols = newSymbols;
-        
+
         this.spinSpeed += GameConfig.SPIN_SPEED_INCREASE_STEP * dt * GameConfig.TARGET_FPS;
         if (this.spinSpeed >= GameConfig.MAX_REEL_SPEED) this.spinSpeed = GameConfig.MAX_REEL_SPEED;
     }
 
     onStopSpin() {
+        this.mapSymbols();
         // Tween the symbols to correct positions on the reel.
         this.symbols.forEach((symbol: SymbolHandler, index: number) => {
             symbol.setBlur(false);
             var targetY = this.getSymbolYByIndex(symbol.node, index + GameConfig.NUM_SYMBOLS_PER_REEL);
-            cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, {y: targetY}, {easing: 'backOut'}).start();
+            cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, { y: targetY }, { easing: 'backOut' }).start();
         });
         this.reservedSymbols.forEach((symbol: SymbolHandler, index: number) => {
             symbol.setBlur(false);
             var targetY = this.getSymbolYByIndex(symbol.node, index);
             symbol.node.y = targetY + GameConfig.NUM_SYMBOLS_PER_REEL * symbol.node.height;
             symbol.node.opacity = 255;
-            cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, {y: targetY}, {easing: 'backOut'}).start();
+            cc.tween(symbol.node).to(GameConfig.STOP_ANIMATION_DURATION, { y: targetY }, { easing: 'backOut' }).start();
         });
     }
 

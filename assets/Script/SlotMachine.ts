@@ -1,6 +1,6 @@
 import BoardManager from "./BoardManager";
 import { ResourceManager } from "./ResourceManager";
-import Server from "./Server";
+import Server from "./Server/Server";
 
 const { ccclass, property } = cc._decorator;
 

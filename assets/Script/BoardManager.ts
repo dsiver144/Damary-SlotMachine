@@ -1,26 +1,13 @@
 import { GameConfig } from "./GameConfig";
 import ReelHandler from "./ReelHandler";
-import SlotMachine from "./SlotMachine";
+import { BoardIdleState } from "./States/BoardStates/BoardIdleState";
+import { BoardStartSpinState } from "./States/BoardStates/BoardStartSpinState";
+import { BoardStopState } from "./States/BoardStates/BoardStartStopState";
+import { FSM } from "./States/FSM";
 
 const { ccclass, property } = cc._decorator;
-
-@ccclass("ReelConfig")
-class ReelConfig {
-    @property()
-    delayTimeToSpin: number = 0;
-}
-
-enum BoardState {
-    START_SPIN,
-    SPINNING,
-    STOP_SPIN,
-    STOPPING,
-    STOPPED,
-    IDLE,
-}
-
 @ccclass
-export default class BoardManager extends cc.Component {
+export default class BoardManager extends FSM {
 
     private static inst: BoardManager = null;
     public static getInstance() {
@@ -33,11 +20,16 @@ export default class BoardManager extends cc.Component {
     @property(cc.Prefab)
     reelPrefab: cc.Prefab = null;
 
-    private reels: ReelHandler[] = [];
-    private currentBoardState: BoardState = BoardState.IDLE;
+    private _reels: ReelHandler[] = [];
+    public get reels(): ReelHandler[] {
+        return this._reels;
+    }
+    public set reels(value: ReelHandler[]) {
+        this._reels = value;
+    }
 
     private spinStartTime: number = 0;
-    
+
     protected onLoad(): void {
         BoardManager.inst = this;
     }
@@ -51,14 +43,15 @@ export default class BoardManager extends cc.Component {
             this.reels.push(reelComp);
         }
         this.reelLayout.updateLayout();
-        
-        cc.tween(this.reelLayout.node).to(0.25, {opacity: 255}).start();
+        cc.tween(this.reelLayout.node).to(0.25, { opacity: 255 }).start();
+
+        this.setState(new BoardIdleState(this));
     }
 
     onReceivedResponse() {
         const elapsedTime = Date.now() - this.spinStartTime;
         const onStopSpin = () => {
-            this.currentBoardState = BoardState.STOP_SPIN;
+            this.setState(new BoardStopState(this));
         }
         if (elapsedTime >= GameConfig.STOP_DELAY_WHEN_RECIEVE_RESPONSE) {
             onStopSpin();
@@ -71,7 +64,7 @@ export default class BoardManager extends cc.Component {
 
     spinReels() {
         this.spinStartTime = Date.now();
-        this.currentBoardState = BoardState.START_SPIN;
+        this.setState(new BoardStartSpinState(this));
     }
 
     areAllReelsSpinning() {
@@ -80,48 +73,6 @@ export default class BoardManager extends cc.Component {
 
     areAllReelsIdling() {
         return this.reels.every(reel => reel.isIdle());
-    }
-
-    updateBoardState() {
-        switch(this.currentBoardState) {
-            case BoardState.START_SPIN:
-                this.reels.forEach(reelHandler => {
-                    setTimeout(() => {
-                        reelHandler.startSpin();
-                    }, GameConfig.DELAY_TIME_ON_START[reelHandler.reelIndex] * 1000);
-                });
-                this.currentBoardState = BoardState.SPINNING;
-                break;
-            case BoardState.SPINNING:
-                // Do stuff when spinning
-                break;
-            case BoardState.STOP_SPIN:
-                if (this.areAllReelsSpinning()) {
-                    this.reels.forEach(reelHandler => {
-                        setTimeout(() => {
-                            reelHandler.stopSpin();
-                        }, GameConfig.DELAY_TIME_ON_STOP[reelHandler.reelIndex] * 1000);
-                    });
-                    this.currentBoardState = BoardState.STOPPING;
-                }
-                break;
-            case BoardState.STOPPING:
-                if (this.areAllReelsIdling()) {
-                    this.currentBoardState = BoardState.STOPPED;
-                }
-                break;
-            case BoardState.STOPPED:
-                SlotMachine.getInstance().spinButton.interactable = true;
-                this.currentBoardState = BoardState.IDLE;
-                break;
-            case BoardState.IDLE:
-                // Do stuff when idling
-                break;
-        }
-    }
-
-    update(dt: number): void {
-        this.updateBoardState();
     }
 
 }
