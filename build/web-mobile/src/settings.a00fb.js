@@ -1,1 +1,0 @@
-window._CCSettings={platform:"web-mobile",groupList:["default"],collisionMatrix:[[true]],hasResourcesBundle:false,hasStartSceneBundle:false,remoteBundles:[],subpackages:[],launchScene:"db://assets/Scene/SlotMachine.fire",orientation:"landscape",jsList:[],bundleVers:{internal:"1b082",symbols:"c0fc9",main:"1aca5"}};
